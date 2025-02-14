@@ -9,13 +9,13 @@ const slides = [
     id: '1',
     title: 'Find Transport Hubs',
     description: 'Discover nearby transport hubs and plan your journey efficiently',
-    image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop',
+    image: 'https://magic828.co.za/wp-content/uploads/2022/10/ScreenShot2018-01-29at9.56.27AM.png',
   },
   {
     id: '2',
     title: 'Real-Time Updates',
     description: 'Get live updates on transport schedules and availability',
-    image: 'https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?q=80&w=2072&auto=format&fit=crop',
+    image: 'https://secretcapetown.co.za/wp-content/uploads/2019/10/Secret-Cape-Town-MyCiTi-Bus-Routes.jpg',
   },
   {
     id: '3',
