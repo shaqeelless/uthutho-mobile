@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router'; // Import useRouter for navigation
 import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the eye icon
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
+  const router = useRouter(); // Hook to handle navigation
 
   const handleLogin = async () => {
     if (loading) return;
-    
+
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -19,6 +22,9 @@ export default function LoginScreen() {
 
     if (error) {
       Alert.alert('Error', error.message);
+    } else {
+      // Redirect to the tabs screen if login is successful
+      router.push('/(tabs)');
     }
     setLoading(false);
   };
@@ -26,7 +32,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.headerTitle}>UTHUTHO MAPS</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
       </View>
 
@@ -39,13 +45,24 @@ export default function LoginScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword} // Toggle password visibility
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={24}
+              color="#333"
+              style={styles.eyeIcon}
+            />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -76,13 +93,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    marginTop: 100,
-    marginBottom: 50,
+    marginTop: 60,
+    marginBottom: 40,
+    alignItems: 'center', // Center align header title
   },
-  title: {
+  headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#0066cc',
   },
   subtitle: {
     fontSize: 18,
@@ -97,6 +115,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
+    width: '85%', // Ensure it doesn't overflow on the screen
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   button: {
     backgroundColor: '#0066cc',
@@ -126,5 +150,9 @@ const styles = StyleSheet.create({
     color: '#0066cc',
     fontSize: 16,
     fontWeight: '600',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
   },
 });

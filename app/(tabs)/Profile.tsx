@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, Button } from 'react-native';
 import { supabase } from '../lib/supabase'; // Adjust the path as needed
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 export default function Profile() {
   const [user, setUser] = useState<any>(null);
@@ -19,12 +20,33 @@ export default function Profile() {
   }, []);
 
   const handleLogout = async () => {
+    // Clear session and logout
     await supabase.auth.signOut();
     router.push('/auth'); // Redirect to the login screen after logout
   };
 
+  const clearCache = async () => {
+    try {
+      await AsyncStorage.clear(); // Clear AsyncStorage
+      alert("Cache cleared successfully!");
+    } catch (error) {
+      alert("Failed to clear cache.");
+      console.error("Error clearing cache", error);
+    }
+  };
+
+  const goToOnboarding = () => {
+    router.push('/onboarding'); // Navigate to the onboarding screen
+  };
+
   if (!user) {
-    return <Text>Loading...</Text>; // Show loading while user data is fetched
+    return (
+      <View style={{ flex: 1, padding: 20 }}>
+        <Text style={{ fontSize: 24, marginBottom: 10 }}>You are not logged in</Text>
+        {/* Button to redirect to onboarding */}
+        <Button title="Go to Onboarding" onPress={goToOnboarding} />
+      </View>
+    );
   }
 
   return (
@@ -35,6 +57,7 @@ export default function Profile() {
       {/* Add any other profile details you want to display */}
 
       <Button title="Logout" onPress={handleLogout} />
+      <Button title="Clear Cache" onPress={clearCache} />
     </View>
   );
 }
