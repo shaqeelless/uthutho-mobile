@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 declare global {
   interface Window {
@@ -17,9 +17,9 @@ export default function RootLayout() {
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if user has seen onboarding
-    SecureStore.getItemAsync('hasSeenOnboarding').then((value) => {
-      setHasSeenOnboarding(value === 'true');
+    // Check if the user has seen onboarding using AsyncStorage
+    AsyncStorage.getItem('hasSeenOnboarding').then((value) => {
+      setHasSeenOnboarding(value === 'true'); // 'true' string if they have seen onboarding
     });
 
     // Get the current session when the app loads
@@ -37,7 +37,7 @@ export default function RootLayout() {
 
   // Show loading state while checking onboarding status
   if (hasSeenOnboarding === null) {
-    return null;
+    return null; // Could show a loading spinner here if needed
   }
 
   return (
