@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
+import { 
+  StyleSheet, View, Text, TouchableOpacity, TextInput, ScrollView, Platform, ActivityIndicator 
+} from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { DEFAULT_CENTER } from '../config/constants';
@@ -9,14 +11,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { mockHubs } from '../config/mockData';
 import { useRouter } from 'expo-router';
 import theme from '../config/theme';
+import { supabase } from '../lib/supabase';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedHub, setSelectedHub] = useState<TransportHub | null>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchText, setSearchText] = useState('');
   const mapRef = useRef<MapView>(null);
   const router = useRouter();
+  const [hubs, setHubs] = useState<TransportHub[]>([]);
+  const [nearbyHubs, setNearbyHubs] = useState<TransportHub[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -28,6 +35,7 @@ export default function MapScreen() {
 
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
+      fetchHubs(location.coords.latitude, location.coords.longitude);
 
       // Animate to user's location when we get it
       if (mapRef.current && location) {
@@ -41,6 +49,87 @@ export default function MapScreen() {
       }
     })();
   }, []);
+
+
+  const fetchHubs = async (lat: number, lng: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('transport_hubs')
+        .select(`
+          *,
+          services:transport_services(*)
+        `);
+
+      if (error) throw error;
+
+      const formattedHubs: TransportHub[] = data.map(hub => ({
+        id: hub.id,
+        name: hub.name,
+        coordinates: {
+          lat: hub.latitude,
+          lng: hub.longitude
+        },
+        services: hub.services
+      }));
+
+      setHubs(formattedHubs);
+
+      // Calculate and set nearby hubs
+      const sortedHubs = [...formattedHubs].sort((a, b) => {
+        const distA = calculateDistance(lat, lng, a.coordinates.lat, a.coordinates.lng);
+        const distB = calculateDistance(lat, lng, b.coordinates.lat, b.coordinates.lng);
+        return distA - distB;
+      });
+
+      setNearbyHubs(sortedHubs.slice(0, 3));
+    } catch (err) {
+      console.error('Error fetching hubs:', err);
+    }
+  };
+
+  const fetchAutocompleteResults = async (query: string) => {
+    if (!query) return;
+    const HERE_API_KEY = 'tEzSszjXMvnBlus-bapyE2hF0qnnPmKpreM7wK3ciAg'; // Replace with your HERE Maps API key
+    const url = `https://autocomplete.search.hereapi.com/v1/autocomplete?q=${query}&apiKey=${HERE_API_KEY}`;
+  
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      setSearchResults(data.items || []); // Ensure `items` is defined
+    } catch (error) {
+      console.error('Error fetching autocomplete results:', error);
+    }
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  const deg2rad = (deg: number) => {
+    return deg * (Math.PI / 180);
+  };
+
+  const getTransportIcon = (type: string) => {
+    switch (type) {
+      case 'bus':
+        return 'bus';
+      case 'train':
+        return 'train';
+      case 'taxi':
+        return 'car';
+      default:
+        return 'bus';
+    }
+  };
 
   // Function to center on user location
   const centerOnLocation = useCallback(() => {
@@ -70,6 +159,50 @@ export default function MapScreen() {
         <Text style={styles.errorText}>{errorMsg}</Text>
       ) : (
         <>
+
+        <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for a location"
+              value={searchText}
+              onChangeText={(text) => {
+                setSearchText(text);
+                fetchAutocompleteResults(text);
+              }}
+            />
+            {searchResults.map((result, index) => {
+              if (!result.position) return null; // Skip if position is undefined
+            
+              const { lat, lng } = result.position;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.searchResultItem}
+                  onPress={() => {
+                    setSearchText(result.title);
+                    setSearchResults([]);
+            
+                    const newRegion = {
+                      latitude: lat,
+                      longitude: lng,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    };
+            
+                    if (mapRef.current) {
+                      mapRef.current.animateToRegion(newRegion, 1000);
+                    }
+            
+                    setLocation({
+                      coords: { latitude: lat, longitude: lng, altitude: 0, accuracy: 0, altitudeAccuracy: 0, heading: 0, speed: 0 },
+                      timestamp: Date.now(),
+                    });
+                  }}>
+                  <Text style={styles.searchResultText}>{result.title}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           <MapView
             ref={mapRef}
             provider={PROVIDER_DEFAULT}
@@ -117,26 +250,84 @@ export default function MapScreen() {
           </TouchableOpacity>
 
           <BottomSheet
-            ref={bottomSheetRef}
-            index={-1}
-            snapPoints={['25%', '50%']}
-            enablePanDownToClose
-            backgroundStyle={styles.bottomSheetBackground}>
-            {selectedHub && (
-              <View style={styles.bottomSheetContent}>
+          ref={bottomSheetRef}
+          index={0}
+          snapPoints={['30%', '60%']}
+          enablePanDownToClose={false}
+          backgroundStyle={styles.bottomSheetBackground}>
+          {selectedHub ? (
+            <View style={styles.bottomSheetContent}>
+              <View style={styles.hubHeader}>
                 <Text style={styles.hubName}>{selectedHub.name}</Text>
-                <Text style={styles.serviceCount}>
-                  {selectedHub.services.length} transport services available
-                </Text>
                 <TouchableOpacity
-                  style={styles.viewServicesButton}
-                  onPress={() => handleViewServices(selectedHub.id)}>
-                  <Text style={styles.viewServicesText}>View Services</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+                  style={styles.closeButton}
+                  onPress={() => setSelectedHub(null)}>
+                  <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
-            )}
-          </BottomSheet>
+              <View style={styles.servicesContainer}>
+                {selectedHub.services.map((service) => (
+                  <View key={service.id} style={styles.serviceItem}>
+                    <View style={styles.serviceHeader}>
+                      <Ionicons
+                        name={getTransportIcon(service.type)}
+                        size={24}
+                        color="#0066cc"
+                      />
+                      <Text style={styles.serviceName}>{service.name}</Text>
+                      <Text style={styles.serviceCost}>R{service.cost}</Text>
+                    </View>
+                    <View style={styles.routeInfo}>
+                      <Text style={styles.routeText}>
+                        {service.route.start} → {service.route.end}
+                      </Text>
+                      <Text style={styles.scheduleText}>
+                        {service.schedule.frequency}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={styles.viewServicesButton}
+                onPress={() => handleViewServices(selectedHub.id)}>
+                <Text style={styles.viewServicesText}>View Full Details</Text>
+                <Ionicons name="arrow-forward" size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.bottomSheetContent}>
+              <Text style={styles.nearbyTitle}>Nearby Transport Hubs</Text>
+              {nearbyHubs.map((hub) => (
+                <TouchableOpacity
+                  key={hub.id}
+                  style={styles.nearbyHub}
+                  onPress={() => handleMarkerPress(hub)}>
+                  <View style={styles.nearbyHubIcon}>
+                    <Ionicons name="bus" size={20} color="#0066cc" />
+                  </View>
+                  <View style={styles.nearbyHubInfo}>
+                    <Text style={styles.nearbyHubName}>{hub.name}</Text>
+                    <View style={styles.serviceTypes}>
+                      {Array.from(
+                        new Set(hub.services.map((s) => s.type))
+                      ).map((type, index) => (
+                        <View key={index} style={styles.serviceType}>
+                          <Ionicons
+                            name={getTransportIcon(type)}
+                            size={16}
+                            color="#666"
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </BottomSheet>
         </>
       )}
     </View>
@@ -180,6 +371,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  searchResultsContainer: {
+    marginTop: 8,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    maxHeight: 200,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 8,
+    zIndex: 10,
+    elevation: 5,
+  },
   bottomSheetBackground: {
     backgroundColor: theme.colors.background,
     borderTopLeftRadius: 20,
@@ -202,6 +410,14 @@ const styles = StyleSheet.create({
     color: theme.colors.dark,
     marginBottom: 8,
   },
+  searchResultItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  searchResultText: {
+    fontSize: 16,
+  },
   serviceCount: {
     fontSize: 16,
     color: `${theme.colors.dark}80`,
@@ -220,6 +436,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
+  },
+  nearbyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 16,
+  },
+  nearbyHub: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  nearbyHubIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#e6f0ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  nearbyHubInfo: {
+    flex: 1,
+  },
+  nearbyHubName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
   centerButton: {
     position: 'absolute',

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Image, StyleSheet } from 'react-native'; // Import Image and StyleSheet
 import theme from '../config/theme'; // Ensure this theme is correctly set up
 
 export default function TabLayout() {
@@ -21,7 +21,12 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Image
+              source={require('../../assets/images/treasure-map.png')} // Replace with your image path
+              style={[styles.tabIcon]} // Apply tintColor for active/inactive state
+            />
+          ),
         }}
       />
 
@@ -30,7 +35,12 @@ export default function TabLayout() {
         name="hubs"
         options={{
           title: 'Transport Hubs',
-          tabBarIcon: ({ color }) => <Ionicons name="bus" size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Image
+              source={require('../../assets/images/train.png')} // Replace with your image path
+              style={[styles.tabIcon]}
+            />
+          ),
         }}
       />
 
@@ -47,7 +57,12 @@ export default function TabLayout() {
         name="carpools"
         options={{
           title: 'Carpools',
-          tabBarIcon: ({ color }) => <Ionicons name="car" size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Image
+              source={require('../../assets/images/transport.png')} // Replace with your image path
+              style={[styles.tabIcon]}
+            />
+          ),
         }}
       />
 
@@ -64,9 +79,23 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Image
+              source={require('../../assets/images/verified.png')} // Replace with your image path
+              style={[styles.tabIcon]}
+            />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+// Add styles for the tab icons
+const styles = StyleSheet.create({
+  tabIcon: {
+    width: 24, // Adjust size as needed
+    height: 24, // Adjust size as needed
+    resizeMode: 'contain', // Ensure the image fits within the dimensions
+  },
+});

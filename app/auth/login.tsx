@@ -1,31 +1,67 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { Link, useRouter } from 'expo-router'; // Import useRouter for navigation
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  ActivityIndicator 
+} from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
-import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the eye icon
+import * as SecureStore from 'expo-secure-store';
 import theme from '../config/theme';
+import { Feather, FontAwesome } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // State to toggle password visibility
-  const router = useRouter(); // Hook to handle navigation
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: 'exp://localhost' }, // Change for production
+      });
+
+      if (error) throw error;
+
+      if (data?.session) {
+        await SecureStore.setItemAsync('access_token', data.session.access_token);
+        await SecureStore.setItemAsync('user_id', data.user.id);
+      }
+
+      router.push('/(tabs)');
+    } catch (error) {
+      Alert.alert('Error', 'Social login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (loading) return;
 
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         Alert.alert('Error', error.message);
+        return;
       }
-      // No need to navigate - root layout will handle it
+
+      if (data?.session) {
+        await SecureStore.setItemAsync('access_token', data.session.access_token);
+        await SecureStore.setItemAsync('user_id', data.user.id);
+      }
+
+      router.push('/(tabs)');
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
@@ -35,46 +71,61 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>UTHUTHO MAPS</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+      <Text style={styles.headerTitle}>Uthotho Maps</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Feather 
+            name={showPassword ? 'eye' : 'eye-off'} 
+            size={24} 
+            color="gray" 
+            style={styles.eyeIcon} 
+          />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword} // Toggle password visibility
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons
-              name={showPassword ? 'eye-off' : 'eye'}
-              size={24}
-              color={theme.colors.dark}
-              style={styles.eyeIcon}
-            />
-          </TouchableOpacity>
-        </View>
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Sign In</Text>
+        )}
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}>
-          <Text style={styles.buttonText}>
-            {loading ? 'Signing in...' : 'Sign In'}
-          </Text>
+      {/* Google & Facebook Icons in One Row */}
+      <View style={styles.socialButtonsContainer}>
+        <TouchableOpacity 
+          style={[styles.iconButton, { backgroundColor: '#DB4437' }]} 
+          onPress={() => handleSocialLogin('google')}
+        >
+          <FontAwesome name="google" size={28} color="white" />
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.iconButton, { backgroundColor: '#4267B2' }]} 
+          onPress={() => handleSocialLogin('facebook')}
+        >
+          <FontAwesome name="facebook" size={28} color="white" />
         </TouchableOpacity>
       </View>
 
@@ -95,40 +146,40 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: theme.colors.background,
-  },
-  header: {
-    marginTop: 60,
-    marginBottom: 40,
-    alignItems: 'center', // Center align header title
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
     color: theme.colors.primary,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: theme.colors.dark,
-    marginTop: 8,
-  },
-  form: {
-    gap: 16,
+    marginBottom: 30,
   },
   input: {
-    backgroundColor: `${theme.colors.dark}05`, // 5% opacity
+    backgroundColor: `${theme.colors.dark}05`,
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
     color: theme.colors.dark,
     width: '100%',
+    marginBottom: 16,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: `${theme.colors.dark}05`,
     borderRadius: 12,
-    paddingRight: 16,
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: theme.colors.dark,
+  },
+  eyeIcon: {
+    marginLeft: 10,
   },
   button: {
     backgroundColor: theme.colors.primary,
@@ -136,6 +187,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 16,
+    width: '100%',
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -144,6 +196,19 @@ const styles = StyleSheet.create({
     color: theme.colors.background,
     fontSize: 18,
     fontWeight: '600',
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '50%',
+    marginTop: 20,
+  },
+  iconButton: {
+    width: 55,
+    height: 55,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footer: {
     flexDirection: 'row',
@@ -158,8 +223,5 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
-  },
-  eyeIcon: {
-    color: theme.colors.dark,
   },
 });
