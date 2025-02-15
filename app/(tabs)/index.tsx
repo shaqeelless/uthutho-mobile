@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Platform } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { DEFAULT_CENTER } from '../config/constants';
 import { TransportHub } from '../config/constants';
@@ -8,12 +8,14 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
 import { mockHubs } from '../config/mockData';
 import { useRouter } from 'expo-router';
+import theme from '../config/theme';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedHub, setSelectedHub] = useState<TransportHub | null>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
+  const mapRef = useRef<MapView>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,8 +28,32 @@ export default function MapScreen() {
 
       let location = await Location.getCurrentPositionAsync({});
       setLocation(location);
+
+      // Animate to user's location when we get it
+      if (mapRef.current && location) {
+        const region: Region = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.01, // Smaller numbers = more zoomed in
+          longitudeDelta: 0.01,
+        };
+        mapRef.current.animateToRegion(region, 1000);
+      }
     })();
   }, []);
+
+  // Function to center on user location
+  const centerOnLocation = useCallback(() => {
+    if (mapRef.current && location) {
+      const region: Region = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      };
+      mapRef.current.animateToRegion(region, 1000);
+    }
+  }, [location]);
 
   const handleMarkerPress = useCallback((hub: TransportHub) => {
     setSelectedHub(hub);
@@ -45,11 +71,12 @@ export default function MapScreen() {
       ) : (
         <>
           <MapView
+            ref={mapRef}
             provider={PROVIDER_DEFAULT}
             style={styles.map}
             initialRegion={{
-              latitude: location?.coords.latitude ?? DEFAULT_CENTER.lat,
-              longitude: location?.coords.longitude ?? DEFAULT_CENTER.lng,
+              latitude: DEFAULT_CENTER.lat,
+              longitude: DEFAULT_CENTER.lng,
               latitudeDelta: 0.0922,
               longitudeDelta: 0.0421,
             }}>
@@ -81,6 +108,14 @@ export default function MapScreen() {
               </Marker>
             ))}
           </MapView>
+
+          {/* Add a button to recenter on user's location */}
+          <TouchableOpacity
+            style={styles.centerButton}
+            onPress={centerOnLocation}>
+            <Ionicons name="locate" size={24} color="#0066cc" />
+          </TouchableOpacity>
+
           <BottomSheet
             ref={bottomSheetRef}
             index={-1}
@@ -127,7 +162,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(0, 102, 204, 0.2)',
+    backgroundColor: `${theme.colors.primary}20`,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -135,21 +170,21 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
   },
   hubMarker: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   bottomSheetBackground: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    shadowColor: '#000',
+    shadowColor: theme.colors.dark,
     shadowOffset: {
       width: 0,
       height: -3,
@@ -164,16 +199,16 @@ const styles = StyleSheet.create({
   hubName: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.dark,
     marginBottom: 8,
   },
   serviceCount: {
     fontSize: 16,
-    color: '#666',
+    color: `${theme.colors.dark}80`,
     marginBottom: 16,
   },
   viewServicesButton: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     padding: 16,
     borderRadius: 12,
     flexDirection: 'row',
@@ -185,5 +220,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
+  },
+  centerButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 100,
+    backgroundColor: theme.colors.background,
+    borderRadius: 30,
+    padding: 12,
+    shadowColor: theme.colors.dark,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

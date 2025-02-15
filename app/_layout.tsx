@@ -4,7 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { theme } from './config/theme';
 
 declare global {
   interface Window {
@@ -17,8 +18,8 @@ export default function RootLayout() {
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if user has seen onboarding
-    SecureStore.getItemAsync('hasSeenOnboarding').then((value) => {
+    // Check if user has seen onboarding using AsyncStorage instead
+    AsyncStorage.getItem('hasSeenOnboarding').then((value) => {
       setHasSeenOnboarding(value === 'true');
     });
 
@@ -56,7 +57,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
         )}
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
     </GestureHandlerRootView>
   );
 }

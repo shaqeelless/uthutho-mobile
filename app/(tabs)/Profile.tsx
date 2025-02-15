@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Button } from 'react-native';
+import { View, Text, Button, StyleSheet } from 'react-native';
 import { supabase } from '../lib/supabase'; // Adjust the path as needed
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
+import theme from '../config/theme';
 
-export default function Profile() {
+export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
@@ -41,8 +42,8 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <View style={{ flex: 1, padding: 20 }}>
-        <Text style={{ fontSize: 24, marginBottom: 10 }}>You are not logged in</Text>
+      <View style={styles.container}>
+        <Text style={styles.text}>You are not logged in</Text>
         {/* Button to redirect to onboarding */}
         <Button title="Go to Onboarding" onPress={goToOnboarding} />
       </View>
@@ -50,8 +51,8 @@ export default function Profile() {
   }
 
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 10 }}>Profile Details</Text>
+    <View style={styles.container}>
+      <Text style={styles.text}>Profile Details</Text>
       <Text>Email: {user.email}</Text>
       <Text>Username: {user.user_metadata?.username}</Text>
       {/* Add any other profile details you want to display */}
@@ -61,3 +62,17 @@ export default function Profile() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    fontSize: 18,
+    color: theme.colors.dark,
+  },
+});

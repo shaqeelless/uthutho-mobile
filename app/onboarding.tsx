@@ -3,6 +3,8 @@ import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import theme from './config/theme';
 
 const slides = [
   {
@@ -33,7 +35,16 @@ export default function OnboardingScreen() {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
+      handleFinish();
+    }
+  };
+
+  const handleFinish = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenOnboarding', 'true');
       router.replace('/auth');
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
     }
   };
 
@@ -80,7 +91,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: theme.colors.dark,
   },
   content: {
     flex: 1,
@@ -97,32 +108,32 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: `${theme.colors.background}40`,
     marginHorizontal: 4,
   },
   paginationDotActive: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
     width: 20,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: theme.colors.background,
     marginBottom: 10,
   },
   description: {
     fontSize: 18,
-    color: 'rgba(255,255,255,0.8)',
+    color: `${theme.colors.background}CC`,
     marginBottom: 30,
   },
   button: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: theme.colors.background,
     fontSize: 18,
     fontWeight: '600',
   },

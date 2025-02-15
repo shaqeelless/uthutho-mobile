@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS=--max_old_space_size=4096 EXPO_NO_TELEMETRY=1 expo start -c",
+    "dev": "expo start -c",
+    "dev:windows": "set NODE_OPTIONS=--max_old_space_size=4096 && set EXPO_NO_TELEMETRY=1 && expo start -c",
     "build:web": "expo export --platform web",
     "lint": "expo lint"
   },

@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'reac
 import { Link, useRouter } from 'expo-router'; // Import useRouter for navigation
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons'; // Import Ionicons for the eye icon
+import theme from '../config/theme';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -14,19 +15,22 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (loading) return;
 
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      Alert.alert('Error', error.message);
-    } else {
-      // Redirect to the tabs screen if login is successful
-      router.push('/(tabs)');
+      if (error) {
+        Alert.alert('Error', error.message);
+      }
+      // No need to navigate - root layout will handle it
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -58,7 +62,7 @@ export default function LoginScreen() {
             <Ionicons
               name={showPassword ? 'eye-off' : 'eye'}
               size={24}
-              color="#333"
+              color={theme.colors.dark}
               style={styles.eyeIcon}
             />
           </TouchableOpacity>
@@ -90,7 +94,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
   },
   header: {
     marginTop: 60,
@@ -100,30 +104,34 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#0066cc',
+    color: theme.colors.primary,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: theme.colors.dark,
     marginTop: 8,
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: `${theme.colors.dark}05`, // 5% opacity
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
-    width: '85%', // Ensure it doesn't overflow on the screen
+    color: theme.colors.dark,
+    width: '100%',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: `${theme.colors.dark}05`,
+    borderRadius: 12,
+    paddingRight: 16,
   },
   button: {
-    backgroundColor: '#0066cc',
+    backgroundColor: theme.colors.primary,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -133,7 +141,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#fff',
+    color: theme.colors.background,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -143,16 +151,15 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   footerText: {
-    color: '#666',
+    color: theme.colors.dark,
     fontSize: 16,
   },
   footerLink: {
-    color: '#0066cc',
+    color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   eyeIcon: {
-    position: 'absolute',
-    right: 16,
+    color: theme.colors.dark,
   },
 });
